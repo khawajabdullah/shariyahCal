@@ -67,6 +67,9 @@
           <p v-if="!availableDays.length" class="msub">No upcoming times on this scholar's Cal.com schedule for a {{ state.duration }}-minute session.</p>
           <div v-for="day in availableDays" :key="day.key" class="day-block">
             <div class="dlabel">{{ day.label }}</div>
+            <div v-if="day.windows && day.windows.length" class="window-hint">
+              Availability: {{ day.windows.join(' · ') }}
+            </div>
             <div class="slot-grid">
               <button v-for="t in day.slots" :key="t"
                       class="slot" :class="{ sel: state.day === day.key && state.time === t }"
@@ -223,6 +226,7 @@ const { isOpen, state, close, goStep, pickDuration, pickSlot, availableDays, sel
 .pkg.sel { border-color: var(--red); background: var(--red-soft); box-shadow: inset 0 0 0 1px var(--red); }
 .day-block { margin-bottom: 18px; }
 .day-block .dlabel { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-muted-ink); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.window-hint { font-size: 12px; color: var(--text-muted-ink); margin: -2px 0 8px; }
 .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
 .slot { border: 1px solid var(--grey-300); padding: 10px 8px; font-size: 12.5px; text-align: center; background: var(--white); }
 .slot:hover { border-color: var(--red); }

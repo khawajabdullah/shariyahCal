@@ -78,6 +78,11 @@ function slotsForWindow(window, duration) {
   return slots;
 }
 
+function formatWindowRange(window) {
+  if (!window?.startTime || !window?.endTime) return '';
+  return `${window.startTime}-${window.endTime}`;
+}
+
 export function availableDaysFor(scholar, duration, lookAhead = 14, maxDays = 5) {
   const schedule = scholar?.schedule;
   if (!schedule || !duration) return [];
@@ -90,7 +95,8 @@ export function availableDaysFor(scholar, duration, lookAhead = 14, maxDays = 5)
     const date = new Date();
     date.setDate(date.getDate() + i);
     const iso = isoDateInZone(date, timeZone);
-    let slots = windowsForDay(schedule, date).flatMap((window) => slotsForWindow(window, duration));
+    const windows = windowsForDay(schedule, date);
+    let slots = windows.flatMap((window) => slotsForWindow(window, duration));
     slots = [...new Set(slots)].sort();
 
     if (iso === todayIso) {
@@ -104,6 +110,7 @@ export function availableDaysFor(scholar, duration, lookAhead = 14, maxDays = 5)
       key: iso,
       label: formatDayLabel(date, timeZone),
       slots,
+      windows: windows.map(formatWindowRange).filter(Boolean),
       timeZone,
     });
   }
