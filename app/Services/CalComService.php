@@ -30,6 +30,31 @@ class CalComService
         return null;
     }
 
+    public function bookings(int $take = 250): array
+    {
+        $key = (string) config('services.cal.key');
+        $base = rtrim((string) config('services.cal.base_url'), '/');
+
+        if ($key === '') {
+            throw new RuntimeException('Cal.com API credentials are not configured.');
+        }
+
+        $response = Http::timeout(25)
+            ->acceptJson()
+            ->withHeaders(['Authorization' => $key])
+            ->get("{$base}/bookings", ['take' => $take]);
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                'Cal.com bookings request failed: '.$response->status().' '.$response->body()
+            );
+        }
+
+        $data = $response->json('data') ?? [];
+
+        return is_array($data) ? $data : [];
+    }
+
     protected function fetchScholars(): array
     {
         $key = (string) config('services.cal.key');
@@ -144,10 +169,16 @@ class CalComService
         [$bio, $credentials] = $this->parseBio((string) ($user['bio'] ?? ''));
         $meta = is_array($user['metadata'] ?? null) ? $user['metadata'] : [];
 
+        $email = $user['email'] ?? null;
+        $email = is_string($email) ? mb_strtolower(trim($email)) : null;
+
         return [
             'id' => $username,
+            'membershipId' => isset($membership['id']) ? (int) $membership['id'] : null,
             'userId' => isset($membership['userId']) ? (int) $membership['userId'] : null,
+            'teamId' => isset($membership['teamId']) ? (int) $membership['teamId'] : null,
             'username' => $username,
+            'email' => $email !== '' ? $email : null,
             'name' => $name,
             'initials' => $this->initials($name),
             'avatarUrl' => $user['avatarUrl'] ?? null,
@@ -160,6 +191,7 @@ class CalComService
             'languages' => $this->listMeta($meta, 'languages'),
             'specialties' => $this->listMeta($meta, 'specialties'),
             'tier' => ($membership['role'] ?? '') === 'OWNER' ? 'institutional' : 'standard',
+            'raw' => $membership,
         ];
     }
 

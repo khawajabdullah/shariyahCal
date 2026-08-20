@@ -3,46 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\CalComService;
+use App\Models\Language;
+use App\Models\Madhhab;
+use App\Models\Scholar;
 use Illuminate\Http\JsonResponse;
-use Throwable;
 
 class ScholarController extends Controller
 {
-    public function __construct(protected CalComService $cal)
-    {
-    }
-
     public function index(): JsonResponse
     {
-        try {
-            return response()->json([
-                'status' => 'success',
-                'data' => $this->cal->scholars(),
-            ]);
-        } catch (Throwable $e) {
-            report($e);
+        $scholars = Scholar::query()
+            ->active()
+            ->with(['madhhab', 'languages' => fn ($query) => $query->active()->ordered()])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Scholar $scholar) => $scholar->toPublicArray())
+            ->values();
 
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unable to load scholars right now.',
-                'data' => [],
-            ], 502);
-        }
+        return response()->json([
+            'status' => 'success',
+            'data' => $scholars,
+            'filters' => $this->filtersPayload(),
+        ]);
     }
 
     public function show(string $id): JsonResponse
     {
-        try {
-            $scholar = $this->cal->scholar($id);
-        } catch (Throwable $e) {
-            report($e);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unable to load this scholar right now.',
-            ], 502);
-        }
+        $scholar = Scholar::query()
+            ->active()
+            ->with(['madhhab', 'languages' => fn ($query) => $query->active()->ordered()])
+            ->where('cal_username', $id)
+            ->first();
 
         if (! $scholar) {
             return response()->json([
@@ -53,7 +44,26 @@ class ScholarController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $scholar,
+            'data' => $scholar->toPublicArray(),
         ]);
+    }
+
+    public function filters(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'success',
+            'data' => $this->filtersPayload(),
+        ]);
+    }
+
+    /**
+     * @return array{madhahib: list<string>, languages: list<string>}
+     */
+    protected function filtersPayload(): array
+    {
+        return [
+            'madhahib' => Madhhab::query()->active()->ordered()->pluck('name')->values()->all(),
+            'languages' => Language::query()->active()->ordered()->pluck('name')->values()->all(),
+        ];
     }
 }

@@ -40,6 +40,7 @@ return [
         'team_id' => env('CAL_TEAM_ID'),
         'base_url' => env('CAL_API_URL', 'https://api.cal.com/v2'),
         'cache_ttl' => (int) env('CAL_CACHE_TTL', 300),
+        'webhook_secret' => env('CAL_WEBHOOK_SECRET'),
     ],
 
 ];

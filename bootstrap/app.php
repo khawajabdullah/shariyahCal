@@ -1,8 +1,13 @@
 <?php
 
+use App\Http\Middleware\SanitizePlainTextInput;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Spatie\Csp\AddCspHeaders;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,7 +17,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->statefulApi();
+        $middleware->append(AddCspHeaders::class);
+        $middleware->appendToGroup('api', SanitizePlainTextInput::class);
+
+        $middleware->alias([
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'api/webhooks/cal',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

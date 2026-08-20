@@ -96,7 +96,62 @@ img, svg { display: block; }
 
 :focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 
+/* ---------- scroll reveal ---------- */
+.scroll-reveal {
+  opacity: 0;
+  transition:
+    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.scroll-reveal--up { transform: translateY(52px); }
+.scroll-reveal--down { transform: translateY(-36px); }
+.scroll-reveal--fade { transform: none; }
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal--stagger.is-visible :deep(.step),
+.scroll-reveal--stagger.is-visible :deep(.scard),
+.scroll-reveal--stagger.is-visible :deep(.tcard) {
+  opacity: 1;
+  transform: translateY(0);
+}
+.scroll-reveal--stagger :deep(.step),
+.scroll-reveal--stagger :deep(.scard),
+.scroll-reveal--stagger :deep(.tcard) {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.scroll-reveal--stagger.is-visible :deep(.step:nth-child(1)),
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(1)),
+.scroll-reveal--stagger.is-visible :deep(.tcard:nth-child(1)) { transition-delay: 0.05s; }
+.scroll-reveal--stagger.is-visible :deep(.step:nth-child(2)),
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(2)),
+.scroll-reveal--stagger.is-visible :deep(.tcard:nth-child(2)) { transition-delay: 0.12s; }
+.scroll-reveal--stagger.is-visible :deep(.step:nth-child(3)),
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(3)),
+.scroll-reveal--stagger.is-visible :deep(.tcard:nth-child(3)) { transition-delay: 0.19s; }
+.scroll-reveal--stagger.is-visible :deep(.step:nth-child(4)),
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(4)),
+.scroll-reveal--stagger.is-visible :deep(.tcard:nth-child(4)) { transition-delay: 0.26s; }
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(5)) { transition-delay: 0.33s; }
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(6)) { transition-delay: 0.40s; }
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(7)) { transition-delay: 0.47s; }
+.scroll-reveal--stagger.is-visible :deep(.scard:nth-child(8)) { transition-delay: 0.54s; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   * { transition: none !important; }
+  .scroll-reveal,
+  .scroll-reveal--stagger :deep(.step),
+  .scroll-reveal--stagger :deep(.scard),
+  .scroll-reveal--stagger :deep(.tcard) {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

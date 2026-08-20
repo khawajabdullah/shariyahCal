@@ -4,7 +4,7 @@
       <div class="section-head">
         <div class="eyebrow">OUR SCHOLARS</div>
         <h2>Find a scholar by madhhab, language, or specialization.</h2>
-        <p>Every scholar on this platform is independently vetted by SRB and, in most cases, AAOIFI-certified. The roster below is loaded from the live Cal.com team.</p>
+        <p>Every scholar on this platform is independently vetted by SRB and, in most cases, AAOIFI-certified. Filter the live roster by madhhab or language.</p>
       </div>
 
       <div class="filters" v-if="madhahib.length || languages.length">
@@ -64,7 +64,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useScholars } from '../composables/useScholars';
 import { useBooking } from '../composables/useBooking';
 
-const { scholars, loading, error, load, PRICING } = useScholars();
+const { scholars, filters, loading, error, load, PRICING } = useScholars();
 const { open: openBooking } = useBooking();
 
 const activeMadhhab = ref('All');
@@ -74,8 +74,12 @@ onMounted(() => {
   load();
 });
 
-const madhahib = computed(() => [...new Set(scholars.value.map(s => s.madhhab).filter(Boolean))]);
-const languages = computed(() => [...new Set(scholars.value.flatMap(s => s.languages || []))].sort());
+const madhahib = computed(() => filters.value.madhahib.length
+  ? filters.value.madhahib
+  : [...new Set(scholars.value.map(s => s.madhhab).filter(Boolean))]);
+const languages = computed(() => filters.value.languages.length
+  ? filters.value.languages
+  : [...new Set(scholars.value.flatMap(s => s.languages || []))].sort());
 
 const filtered = computed(() => scholars.value.filter(s => {
   const mOk = activeMadhhab.value === 'All' || s.madhhab === activeMadhhab.value;
