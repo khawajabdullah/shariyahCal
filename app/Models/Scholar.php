@@ -15,6 +15,7 @@ class Scholar extends Model
         'cal_username',
         'cal_user_id',
         'email',
+        'cal_api_key',
         'name',
         'initials',
         'avatar_url',
@@ -28,7 +29,12 @@ class Scholar extends Model
         'schedule',
         'is_active',
         'last_synced_at',
+        'event_types_synced_at',
         'raw_payload',
+    ];
+
+    protected $hidden = [
+        'cal_api_key',
     ];
 
     protected function casts(): array
@@ -40,8 +46,10 @@ class Scholar extends Model
             'raw_payload' => 'array',
             'is_active' => 'boolean',
             'last_synced_at' => 'datetime',
+            'event_types_synced_at' => 'datetime',
             'cal_user_id' => 'integer',
             'cal_membership_id' => 'integer',
+            'cal_api_key' => 'encrypted',
         ];
     }
 
@@ -60,13 +68,27 @@ class Scholar extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function eventTypes(): HasMany
+    {
+        return $this->hasMany(EventType::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
+    public function hasCalApiKey(): bool
+    {
+        return filled($this->cal_api_key);
+    }
+
     public function toPublicArray(): array
     {
+        $eventTypes = $this->relationLoaded('eventTypes')
+            ? $this->eventTypes
+            : $this->eventTypes()->bookable()->orderBy('length_in_minutes')->get();
+
         return [
             'id' => $this->cal_username,
             'userId' => $this->cal_user_id,
@@ -83,6 +105,10 @@ class Scholar extends Model
             'specialties' => $this->specialties ?? [],
             'tier' => $this->tier,
             'schedule' => $this->schedule,
+            'eventTypes' => $eventTypes
+                ->map(fn (EventType $eventType) => $eventType->toPublicArray())
+                ->values()
+                ->all(),
         ];
     }
 }

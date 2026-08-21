@@ -1,6 +1,5 @@
 import { ref } from 'vue';
 import axios from '../bootstrap';
-import { PRICING } from '../data/scholars';
 
 const scholars = ref([]);
 const filters = ref({ madhahib: [], languages: [] });
@@ -41,5 +40,5 @@ export function useScholars() {
     return scholars.value.find((s) => s.id === id) ?? null;
   }
 
-  return { scholars, filters, loading, loaded, error, load, findById, PRICING };
+  return { scholars, filters, loading, loaded, error, load, findById };
 }

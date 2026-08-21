@@ -40,17 +40,25 @@ class ScholarController extends Controller
     {
         return response()->json([
             'status' => 'success',
-            'data' => new ScholarResource($scholar->load(['madhhab', 'languages'])),
+            'data' => new ScholarResource($scholar->load([
+                'madhhab',
+                'languages',
+                'eventTypes' => fn ($query) => $query->orderBy('length_in_minutes')->orderBy('title'),
+            ])),
         ]);
     }
 
     public function update(UpdateScholarRequest $request, Scholar $scholar): JsonResponse
     {
-        $data = $request->safe()->except(['language_ids']);
+        $data = $request->safe()->except(['language_ids', 'cal_api_key']);
         $scholar->fill($data);
 
         if ($request->exists('is_active')) {
             $scholar->is_active = $request->boolean('is_active');
+        }
+
+        if ($request->filled('cal_api_key')) {
+            $scholar->cal_api_key = trim((string) $request->input('cal_api_key'));
         }
 
         $scholar->save();
@@ -61,7 +69,11 @@ class ScholarController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => new ScholarResource($scholar->load(['madhhab', 'languages'])),
+            'data' => new ScholarResource($scholar->load([
+                'madhhab',
+                'languages',
+                'eventTypes' => fn ($query) => $query->orderBy('length_in_minutes')->orderBy('title'),
+            ])),
         ]);
     }
 

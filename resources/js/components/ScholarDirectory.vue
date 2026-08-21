@@ -44,8 +44,18 @@
             <p class="specialties" v-else-if="s.bio">{{ s.bio }}</p>
             <div class="pricerow">
               <div class="price">
-                {{ s.tier === 'institutional' ? 'By engagement' : '$' + PRICING[30] }}<br>
-                <small>{{ s.tier === 'institutional' ? 'Request access' : 'from · 30 min' }}</small>
+                <template v-if="s.tier === 'institutional'">
+                  By engagement<br>
+                  <small>Request access</small>
+                </template>
+                <template v-else-if="startingPrice(s)">
+                  {{ startingPrice(s).label }}<br>
+                  <small>from · {{ startingPrice(s).minutes }} min</small>
+                </template>
+                <template v-else>
+                  Pricing soon<br>
+                  <small>sessions syncing</small>
+                </template>
               </div>
             </div>
             <button class="view-btn" @click="openBooking(s)">
@@ -64,8 +74,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useScholars } from '../composables/useScholars';
 import { useBooking } from '../composables/useBooking';
 
-const { scholars, filters, loading, error, load, PRICING } = useScholars();
-const { open: openBooking } = useBooking();
+const { scholars, filters, loading, error, load } = useScholars();
+const { open: openBooking, formatMoney } = useBooking();
 
 const activeMadhhab = ref('All');
 const activeLang = ref('All');
@@ -74,6 +84,17 @@ onMounted(() => {
   load();
 });
 
+function startingPrice(scholar) {
+  const priced = (scholar.eventTypes || [])
+    .filter((item) => item?.price != null)
+    .sort((a, b) => Number(a.price) - Number(b.price));
+  const first = priced[0];
+  if (!first) return null;
+  return {
+    label: formatMoney(first.price, first.currency),
+    minutes: first.lengthInMinutes,
+  };
+}
 const madhahib = computed(() => filters.value.madhahib.length
   ? filters.value.madhahib
   : [...new Set(scholars.value.map(s => s.madhhab).filter(Boolean))]);

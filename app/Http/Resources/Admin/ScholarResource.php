@@ -15,6 +15,8 @@ class ScholarResource extends JsonResource
             'cal_username' => $this->cal_username,
             'cal_user_id' => $this->cal_user_id,
             'email' => $this->email,
+            'has_cal_api_key' => filled($this->cal_api_key),
+            'event_types_synced_at' => $this->event_types_synced_at?->toIso8601String(),
             'name' => $this->name,
             'initials' => $this->initials,
             'avatar_url' => $this->avatar_url,
@@ -37,6 +39,7 @@ class ScholarResource extends JsonResource
                 'code' => $language->code,
             ])->values()),
             'language_ids' => $this->whenLoaded('languages', fn () => $this->languages->pluck('id')->values()),
+            'event_types' => $this->whenLoaded('eventTypes', fn () => EventTypeResource::collection($this->eventTypes)->resolve()),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

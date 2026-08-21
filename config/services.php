@@ -41,6 +41,8 @@ return [
         'base_url' => env('CAL_API_URL', 'https://api.cal.com/v2'),
         'cache_ttl' => (int) env('CAL_CACHE_TTL', 300),
         'webhook_secret' => env('CAL_WEBHOOK_SECRET'),
+        'event_types_api_version' => env('CAL_EVENT_TYPES_API_VERSION', '2024-06-14'),
+        'bookings_api_version' => env('CAL_BOOKINGS_API_VERSION', '2026-02-25'),
     ],
 
 ];

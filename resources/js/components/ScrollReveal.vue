@@ -4,16 +4,17 @@
     class="scroll-reveal"
     :class="[
       `scroll-reveal--${direction}`,
-      { 'is-visible': visible, 'scroll-reveal--stagger': stagger },
+      { 'is-visible': visible, 'is-settled': settled, 'scroll-reveal--stagger': stagger },
     ]"
     :style="delayStyle"
+    @transitionend="onTransitionEnd"
   >
     <slot />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   direction: { type: String, default: 'up' },
@@ -24,15 +25,35 @@ const props = defineProps({
 
 const root = ref(null);
 const visible = ref(false);
+const settled = ref(false);
 let observer = null;
+let settleTimer = null;
 
 const delayStyle = computed(() =>
   props.delay ? { transitionDelay: `${props.delay}ms` } : null,
 );
 
+function onTransitionEnd(e) {
+  if (e.target !== root.value) return;
+  if (visible.value) settled.value = true;
+}
+
+watch(visible, (isVisible) => {
+  clearTimeout(settleTimer);
+  if (!isVisible) {
+    settled.value = false;
+    return;
+  }
+  // Fallback if transitionend doesn't fire (e.g. display:none children)
+  settleTimer = setTimeout(() => {
+    settled.value = true;
+  }, 900);
+});
+
 onMounted(() => {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     visible.value = true;
+    settled.value = true;
     return;
   }
 
@@ -46,5 +67,8 @@ onMounted(() => {
   if (root.value) observer.observe(root.value);
 });
 
-onUnmounted(() => observer?.disconnect());
+onUnmounted(() => {
+  observer?.disconnect();
+  clearTimeout(settleTimer);
+});
 </script>

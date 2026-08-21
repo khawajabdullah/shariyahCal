@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\EventTypeController as AdminEventTypeController;
 use App\Http\Controllers\Api\Admin\LanguageController as AdminLanguageController;
 use App\Http\Controllers\Api\Admin\MadhhabController as AdminMadhhabController;
 use App\Http\Controllers\Api\Admin\ProfileController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\Admin\ScholarController as AdminScholarController;
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
 use App\Http\Controllers\Api\Auth\MeController;
+use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ScholarController;
 use App\Http\Controllers\Api\Webhook\CalComWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +22,7 @@ Route::get('/user', [MeController::class, 'show'])->middleware('auth:sanctum');
 Route::get('/scholars', [ScholarController::class, 'index']);
 Route::get('/scholars/{id}', [ScholarController::class, 'show']);
 Route::get('/directory-filters', [ScholarController::class, 'filters']);
+Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:20,1');
 
 Route::post('/webhooks/cal', [CalComWebhookController::class, 'store']);
 
@@ -45,6 +48,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/scholars/{scholar}', [AdminScholarController::class, 'show']);
     Route::put('/scholars/{scholar}', [AdminScholarController::class, 'update']);
     Route::delete('/scholars/{scholar}', [AdminScholarController::class, 'destroy']);
+
+    Route::get('/scholars/{scholar}/event-types', [AdminEventTypeController::class, 'index']);
+    Route::post('/scholars/{scholar}/event-types/sync', [AdminEventTypeController::class, 'sync']);
+    Route::put('/scholars/{scholar}/event-types/{eventType}', [AdminEventTypeController::class, 'update']);
 
     Route::post('/bookings/sync', [AdminBookingController::class, 'sync']);
     Route::get('/bookings', [AdminBookingController::class, 'index']);

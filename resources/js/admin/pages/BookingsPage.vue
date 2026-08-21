@@ -6,9 +6,9 @@
         <h1 class="mt-3 text-[34px] text-srb-ink">Bookings</h1>
         <p class="mt-2 text-sm text-srb-muted">Stored from Cal.com webhooks and manual sync. Unique on booking UID.</p>
       </div>
-      <button type="button" class="admin-btn admin-btn-dark" :disabled="syncing" @click="sync">
+      <!-- <button type="button" class="admin-btn admin-btn-dark" :disabled="syncing" @click="sync">
         {{ syncing ? 'Syncing…' : 'Sync bookings' }}
-      </button>
+      </button> -->
     </div>
     <p v-if="syncMessage" class="mb-4 text-sm text-srb-muted">{{ syncMessage }}</p>
 

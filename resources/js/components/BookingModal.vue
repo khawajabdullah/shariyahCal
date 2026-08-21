@@ -1,10 +1,10 @@
 <template>
-  <div class="overlay" :class="{ open: isOpen }" @click.self="close">
+  <div class="overlay" :class="{ open: isOpen }">
     <div class="modal" v-if="state.scholar">
       <!-- STEP 1: Profile & duration -->
       <template v-if="state.step === 1">
         <div class="modal-head">
-          <button class="modal-close" @click="close">&times;</button>
+          <button class="modal-close" :disabled="submitting" @click="close">&times;</button>
           <div class="avatar">
             <img v-if="state.scholar.avatarUrl" :src="state.scholar.avatarUrl" :alt="state.scholar.name">
             <template v-else>{{ state.scholar.initials }}</template>
@@ -31,19 +31,26 @@
               <button class="btn btn-red" @click="close">Request access</button>
             </div>
           </template>
+          <template v-else-if="!eventTypes.length">
+            <p class="msub">No priced session lengths are available for this scholar yet.</p>
+            <div class="modal-actions">
+              <button class="btn btn-ghost-light" @click="close">Close</button>
+            </div>
+          </template>
           <template v-else>
             <h4 style="font-size:14px;margin-bottom:12px;">Choose a session length</h4>
-            <div class="pkg-grid">
-              <button v-for="d in [30, 45, 60]" :key="d"
-                      class="pkg" :class="{ sel: state.duration === d }"
-                      @click="pickDuration(d)">
-                <div class="dur">{{ d }} min</div>
-                <div class="pr">${{ PRICING[d] }}</div>
+            <div class="pkg-grid" :style="{ gridTemplateColumns: `repeat(${Math.min(eventTypes.length, 3)}, 1fr)` }">
+              <button v-for="item in eventTypes" :key="item.id"
+                      class="pkg" :class="{ sel: state.eventTypeId === item.id }"
+                      @click="pickEventType(item)">
+                <div class="dur">{{ item.lengthInMinutes }} min</div>
+                <div class="pr">{{ formatMoney(item.price, item.currency) }}</div>
+                <div class="pkg-title" v-if="item.title">{{ item.title }}</div>
               </button>
             </div>
             <div class="modal-actions">
               <button class="btn btn-ghost-light" @click="close">Cancel</button>
-              <button class="btn btn-red" @click="goStep(2)">Continue to scheduling</button>
+              <button class="btn btn-red" :disabled="!state.eventTypeId" :style="!state.eventTypeId ? 'opacity:.5' : ''" @click="goStep(2)">Continue to scheduling</button>
             </div>
           </template>
         </div>
@@ -52,7 +59,7 @@
       <!-- STEP 2: Time selection -->
       <template v-if="state.step === 2">
         <div class="modal-head">
-          <button class="modal-close" @click="close">&times;</button>
+          <button class="modal-close" :disabled="submitting" @click="close">&times;</button>
           <div class="avatar">
             <img v-if="state.scholar.avatarUrl" :src="state.scholar.avatarUrl" :alt="state.scholar.name">
             <template v-else>{{ state.scholar.initials }}</template>
@@ -86,7 +93,7 @@
       <!-- STEP 3: Details -->
       <template v-if="state.step === 3">
         <div class="modal-head">
-          <button class="modal-close" @click="close">&times;</button>
+          <button class="modal-close" :disabled="submitting" @click="close">&times;</button>
           <div class="avatar">
             <img v-if="state.scholar.avatarUrl" :src="state.scholar.avatarUrl" :alt="state.scholar.name">
             <template v-else>{{ state.scholar.initials }}</template>
@@ -99,52 +106,58 @@
         <div class="modal-body">
           <StepTrack :step="3" />
           <div class="field-row">
-            <div class="field"><label>Full name</label><input type="text" placeholder="Your name"></div>
-            <div class="field"><label>Email</label><input type="email" placeholder="you@email.com"></div>
+            <div class="field"><label>Full name</label><input v-model="state.attendee.name" type="text" placeholder="Your name"></div>
+            <div class="field"><label>Email</label><input v-model="state.attendee.email" type="email" placeholder="you@email.com"></div>
           </div>
           <div class="field-row">
-            <div class="field"><label>Phone</label><input type="tel" placeholder="+ country code"></div>
-            <div class="field"><label>Country</label><input type="text" placeholder="Your country"></div>
+            <div class="field"><label>Phone</label><input v-model="state.attendee.phone" type="tel" placeholder="+ country code"></div>
+            <div class="field"><label>Country</label><input v-model="state.attendee.country" type="text" placeholder="Your country"></div>
           </div>
-          <div class="field"><label>What would you like to discuss?</label><textarea placeholder="A brief description helps the scholar prepare — e.g. a specific transaction, product, or ruling."></textarea></div>
+          <div class="field"><label>What would you like to discuss?</label><textarea v-model="state.attendee.notes" placeholder="A brief description helps the scholar prepare — e.g. a specific transaction, product, or ruling."></textarea></div>
           <div class="consent">
-            <input type="checkbox" id="consentBox" checked>
+            <input v-model="state.attendee.consent" type="checkbox" id="consentBox">
             <label for="consentBox">I agree this session may be recorded and summarized for my own reference and SRB's records.</label>
           </div>
+          <p v-if="submitError && state.step === 3" class="msub" style="color:var(--red);">{{ submitError }}</p>
           <div class="modal-actions">
             <button class="btn btn-ghost-light" @click="goStep(2)">Back</button>
-            <button class="btn btn-red" @click="goStep(4)">Continue to payment</button>
+            <button
+              class="btn btn-red"
+              :disabled="!canContinueDetails"
+              :style="!canContinueDetails ? 'opacity:.5' : ''"
+              @click="goStep(4)"
+            >
+              Continue to payment
+            </button>
           </div>
         </div>
       </template>
 
-      <!-- STEP 4: Payment -->
+      <!-- STEP 4: Payment (gateway later) -->
       <template v-if="state.step === 4">
         <div class="modal-head">
-          <button class="modal-close" @click="close">&times;</button>
+          <button class="modal-close" :disabled="submitting" @click="close">&times;</button>
           <div class="avatar">
             <img v-if="state.scholar.avatarUrl" :src="state.scholar.avatarUrl" :alt="state.scholar.name">
             <template v-else>{{ state.scholar.initials }}</template>
           </div>
           <div>
             <h3 class="mh" style="color:var(--text-light);margin-bottom:2px;">Payment</h3>
-            <div class="mono-sub">Secure checkout — mock, no real transaction</div>
+            <div class="mono-sub">Payment gateway coming next — booking is created with pending payment</div>
           </div>
         </div>
         <div class="modal-body">
-          <div class="field"><label>Card number</label><input type="text" placeholder="4242 4242 4242 4242"></div>
-          <div class="field-row">
-            <div class="field"><label>Expiry</label><input type="text" placeholder="MM / YY"></div>
-            <div class="field"><label>CVC</label><input type="text" placeholder="123"></div>
-          </div>
-          <div style="margin:22px 0;">
+          <div style="margin:8px 0 22px;">
             <div class="summary-line"><span>{{ state.scholar.name }}</span><span>{{ state.duration }} min</span></div>
             <div class="summary-line"><span>{{ selectedDay?.label || state.day }}, {{ state.time }}</span><span>{{ state.scholar.schedule?.timeZone?.replaceAll('_', ' ') || '—' }}</span></div>
-            <div class="summary-line total"><span>Total</span><span>${{ PRICING[state.duration] }}</span></div>
+            <div class="summary-line total"><span>Total</span><span>{{ priceLabel }}</span></div>
           </div>
+          <p v-if="submitError" class="msub" style="color:var(--red);">{{ submitError }}</p>
           <div class="modal-actions">
-            <button class="btn btn-ghost-light" @click="goStep(3)">Back</button>
-            <button class="btn btn-red" @click="goStep(5)">Confirm &amp; pay</button>
+            <button class="btn btn-ghost-light" :disabled="submitting" @click="goStep(3)">Back</button>
+            <button class="btn btn-red" :disabled="submitting" @click="confirmBooking">
+              {{ submitting ? 'Booking…' : 'Confirm booking' }}
+            </button>
           </div>
         </div>
       </template>
@@ -152,7 +165,7 @@
       <!-- STEP 5: Confirmation -->
       <template v-if="state.step === 5">
         <div class="modal-head">
-          <button class="modal-close" @click="close">&times;</button>
+          <button class="modal-close" :disabled="submitting" @click="close">&times;</button>
           <div class="avatar">
             <img v-if="state.scholar.avatarUrl" :src="state.scholar.avatarUrl" :alt="state.scholar.name">
             <template v-else>{{ state.scholar.initials }}</template>
@@ -167,6 +180,9 @@
             <div class="ok">✓</div>
             <h4 style="font-size:17px;margin-bottom:6px;">You're booked with {{ state.scholar.name }}</h4>
             <p style="color:var(--text-muted-ink);font-size:14px;">{{ selectedDay?.label || state.day }} at {{ state.time }} · {{ state.duration }} minutes</p>
+            <p v-if="confirmation?.meeting_url" style="color:var(--text-muted-ink);font-size:13px;margin-top:10px;">
+              <a :href="confirmation.meeting_url" target="_blank" rel="noopener">Join meeting link</a>
+            </p>
           </div>
           <div class="video-slot">Video call integration point — the session opens here at the scheduled time.</div>
           <div class="modal-actions"><button class="btn btn-ghost-light btn-block" @click="close">Done</button></div>
@@ -177,10 +193,34 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useBooking } from '../composables/useBooking';
 import StepTrack from './StepTrack.vue';
 
-const { isOpen, state, close, goStep, pickDuration, pickSlot, availableDays, selectedDay, scheduleLabel, PRICING } = useBooking();
+const {
+  isOpen,
+  state,
+  close,
+  goStep,
+  pickEventType,
+  pickSlot,
+  availableDays,
+  selectedDay,
+  scheduleLabel,
+  eventTypes,
+  priceLabel,
+  formatMoney,
+  submitting,
+  submitError,
+  confirmation,
+  confirmBooking,
+} = useBooking();
+
+const canContinueDetails = computed(() =>
+  Boolean(state.attendee.name?.trim())
+  && Boolean(state.attendee.email?.trim())
+  && state.attendee.consent,
+);
 </script>
 
 <style scoped>
@@ -203,7 +243,8 @@ const { isOpen, state, close, goStep, pickDuration, pickSlot, availableDays, sel
   position: absolute; top: 18px; right: 18px; background: none; border: none; color: var(--text-muted-light);
   font-size: 22px; line-height: 1; padding: 6px;
 }
-.modal-close:hover { color: var(--text-light); }
+.modal-close:hover:not(:disabled) { color: var(--text-light); }
+.modal-close:disabled { opacity: 0.4; cursor: not-allowed; }
 .modal-body { padding: 34px; }
 .avatar {
   width: 56px; height: 56px; border-radius: 50%;
@@ -223,6 +264,7 @@ const { isOpen, state, close, goStep, pickDuration, pickSlot, availableDays, sel
 .pkg { border: 1px solid var(--grey-300); padding: 16px 14px; text-align: left; background: var(--white); }
 .pkg .dur { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--text-muted-ink); }
 .pkg .pr { font-family: 'Spectral', serif; font-size: 20px; margin-top: 6px; }
+.pkg-title { margin-top: 6px; font-size: 11.5px; color: var(--text-muted-ink); }
 .pkg.sel { border-color: var(--red); background: var(--red-soft); box-shadow: inset 0 0 0 1px var(--red); }
 .day-block { margin-bottom: 18px; }
 .day-block .dlabel { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-muted-ink); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
@@ -248,6 +290,12 @@ const { isOpen, state, close, goStep, pickDuration, pickSlot, availableDays, sel
 .summary-line.total { font-weight: 600; font-size: 15px; border-bottom: none; padding-top: 14px; }
 .modal-actions { display: flex; gap: 12px; margin-top: 26px; }
 .modal-actions .btn { flex: 1; }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+}
 .confirm-box { text-align: center; padding: 20px 0 6px; }
 .confirm-box .ok {
   width: 56px; height: 56px; border-radius: 50%; background: var(--red); color: #fff;

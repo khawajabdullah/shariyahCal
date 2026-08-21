@@ -22,6 +22,7 @@ class UpdateScholarRequest extends AdminFormRequest
             'specialties' => ['nullable', 'array', 'max:20'],
             'specialties.*' => ['string', 'max:120', new SafePlainText],
             'is_active' => ['sometimes', 'boolean'],
+            'cal_api_key' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

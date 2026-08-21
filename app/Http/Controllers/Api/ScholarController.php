@@ -14,8 +14,12 @@ class ScholarController extends Controller
     {
         $scholars = Scholar::query()
             ->active()
-            ->with(['madhhab', 'languages' => fn ($query) => $query->active()->ordered()])
-            ->orderBy('name')
+            ->with([
+                'madhhab',
+                'languages' => fn ($query) => $query->active()->ordered(),
+                'eventTypes' => fn ($query) => $query->bookable()->orderBy('length_in_minutes')->orderBy('title'),
+            ])
+            // ->orderBy('name')
             ->get()
             ->map(fn (Scholar $scholar) => $scholar->toPublicArray())
             ->values();
@@ -31,7 +35,11 @@ class ScholarController extends Controller
     {
         $scholar = Scholar::query()
             ->active()
-            ->with(['madhhab', 'languages' => fn ($query) => $query->active()->ordered()])
+            ->with([
+                'madhhab',
+                'languages' => fn ($query) => $query->active()->ordered(),
+                'eventTypes' => fn ($query) => $query->bookable()->orderBy('length_in_minutes')->orderBy('title'),
+            ])
             ->where('cal_username', $id)
             ->first();
 

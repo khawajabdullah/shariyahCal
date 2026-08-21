@@ -55,6 +55,76 @@ class CalComService
         return is_array($data) ? $data : [];
     }
 
+    /**
+     * Fetch event-types for a scholar using that scholar's personal Cal.com API key.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function eventTypes(string $apiKey): array
+    {
+        $apiKey = trim($apiKey);
+        $base = rtrim((string) config('services.cal.base_url'), '/');
+
+        if ($apiKey === '') {
+            throw new RuntimeException('Cal.com API key is required to fetch event types.');
+        }
+
+        $response = Http::timeout(25)
+            ->acceptJson()
+            ->withHeaders([
+                'Authorization' => $apiKey,
+                'cal-api-version' => (string) config('services.cal.event_types_api_version', '2024-06-14'),
+            ])
+            ->get("{$base}/event-types");
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                'Cal.com event-types request failed: '.$response->status().' '.$response->body()
+            );
+        }
+
+        $data = $response->json('data') ?? [];
+
+        return is_array($data) ? array_values(array_filter($data, 'is_array')) : [];
+    }
+
+    /**
+     * Create a booking via Cal.com v2.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function createBooking(array $payload, ?string $apiKey = null): array
+    {
+        $base = rtrim((string) config('services.cal.base_url'), '/');
+        $headers = [
+            'cal-api-version' => (string) config('services.cal.bookings_api_version', '2026-02-25'),
+        ];
+
+        if (is_string($apiKey) && trim($apiKey) !== '') {
+            $headers['Authorization'] = trim($apiKey);
+        }
+
+        $response = Http::timeout(30)
+            ->acceptJson()
+            ->withHeaders($headers)
+            ->post("{$base}/bookings", $payload);
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                'Cal.com create booking failed: '.$response->status().' '.$response->body()
+            );
+        }
+
+        $data = $response->json('data');
+
+        if (! is_array($data)) {
+            throw new RuntimeException('Cal.com create booking returned an unexpected payload.');
+        }
+
+        return $data;
+    }
+
     protected function fetchScholars(): array
     {
         $key = (string) config('services.cal.key');

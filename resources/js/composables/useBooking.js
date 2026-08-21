@@ -1,13 +1,28 @@
 import { computed, reactive, ref } from 'vue';
+import axios from '../bootstrap';
 import { useScholars } from './useScholars';
 
 const isOpen = ref(false);
+const submitting = ref(false);
+const submitError = ref('');
+const confirmation = ref(null);
 const state = reactive({
   scholar: null,
   step: 1,
-  duration: 30,
+  eventTypeId: null,
+  duration: null,
+  price: null,
+  currency: 'usd',
   day: null,
   time: null,
+  attendee: {
+    name: '',
+    email: '',
+    phone: '',
+    country: '',
+    notes: '',
+    consent: true,
+  },
 });
 
 function weekdayInZone(date, timeZone) {
@@ -83,6 +98,19 @@ function formatWindowRange(window) {
   return `${window.startTime}-${window.endTime}`;
 }
 
+function formatMoney(amount, currency = 'usd') {
+  if (amount == null || Number.isNaN(Number(amount))) return '—';
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: String(currency || 'usd').toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(Number(amount));
+  } catch {
+    return `$${amount}`;
+  }
+}
+
 export function availableDaysFor(scholar, duration, lookAhead = 14, maxDays = 5) {
   const schedule = scholar?.schedule;
   if (!schedule || !duration) return [];
@@ -118,32 +146,75 @@ export function availableDaysFor(scholar, duration, lookAhead = 14, maxDays = 5)
   return days;
 }
 
+function resetAttendee() {
+  Object.assign(state.attendee, {
+    name: '',
+    email: '',
+    phone: '',
+    country: '',
+    notes: '',
+    consent: true,
+  });
+}
+
 export function useBooking() {
-  const { findById, PRICING } = useScholars();
+  const { findById } = useScholars();
+
+  const eventTypes = computed(() => {
+    const list = state.scholar?.eventTypes;
+    return Array.isArray(list) ? list.filter((item) => item?.price != null) : [];
+  });
+
+  const selectedEventType = computed(() =>
+    eventTypes.value.find((item) => item.id === state.eventTypeId) || null,
+  );
 
   function open(scholarOrId) {
     const s = scholarOrId && typeof scholarOrId === 'object'
       ? scholarOrId
       : findById(scholarOrId);
     if (!s) return;
-    Object.assign(state, { scholar: s, step: 1, duration: 30, day: null, time: null });
+
+    const first = Array.isArray(s.eventTypes)
+      ? s.eventTypes.find((item) => item?.price != null)
+      : null;
+
+    Object.assign(state, {
+      scholar: s,
+      step: 1,
+      eventTypeId: first?.id ?? null,
+      duration: first?.lengthInMinutes ?? null,
+      price: first?.price ?? null,
+      currency: first?.currency || 'usd',
+      day: null,
+      time: null,
+    });
+    resetAttendee();
+    submitError.value = '';
+    confirmation.value = null;
     isOpen.value = true;
   }
 
   function close() {
+    if (submitting.value) return;
     isOpen.value = false;
   }
 
   function goStep(n) {
+    if (submitting.value) return;
     state.step = n;
   }
 
-  function pickDuration(d) {
-    if (state.duration !== d) {
+  function pickEventType(eventType) {
+    if (!eventType) return;
+    if (state.eventTypeId !== eventType.id) {
       state.day = null;
       state.time = null;
     }
-    state.duration = d;
+    state.eventTypeId = eventType.id;
+    state.duration = eventType.lengthInMinutes;
+    state.price = eventType.price;
+    state.currency = eventType.currency || 'usd';
   }
 
   function pickSlot(day, time) {
@@ -158,6 +229,36 @@ export function useBooking() {
     if (!schedule) return '';
     return [schedule.name, schedule.timeZone?.replaceAll('_', ' ')].filter(Boolean).join(' · ');
   });
+  const priceLabel = computed(() => formatMoney(state.price, state.currency));
+
+  async function confirmBooking() {
+    if (submitting.value || !state.scholar || !state.eventTypeId || !state.day || !state.time) return;
+
+    submitting.value = true;
+    submitError.value = '';
+
+    try {
+      const timeZone = state.scholar.schedule?.timeZone || selectedDay.value?.timeZone || 'UTC';
+      const { data } = await axios.post('/api/bookings', {
+        scholar_id: state.scholar.id,
+        event_type_id: state.eventTypeId,
+        start: `${state.day}T${state.time}:00`,
+        attendee_name: state.attendee.name,
+        attendee_email: state.attendee.email,
+        attendee_phone: state.attendee.phone || null,
+        attendee_timezone: timeZone,
+        notes: state.attendee.notes || null,
+      });
+      confirmation.value = data.data ?? null;
+      state.step = 5;
+    } catch (e) {
+      submitError.value = Object.values(e.response?.data?.errors ?? {})[0]?.[0]
+        || e.response?.data?.message
+        || 'Unable to create booking.';
+    } finally {
+      submitting.value = false;
+    }
+  }
 
   return {
     isOpen,
@@ -165,11 +266,18 @@ export function useBooking() {
     open,
     close,
     goStep,
-    pickDuration,
+    pickEventType,
     pickSlot,
     availableDays,
     selectedDay,
+    selectedEventType,
     scheduleLabel,
-    PRICING,
+    eventTypes,
+    priceLabel,
+    formatMoney,
+    submitting,
+    submitError,
+    confirmation,
+    confirmBooking,
   };
 }

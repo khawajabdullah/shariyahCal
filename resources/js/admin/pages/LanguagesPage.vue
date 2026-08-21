@@ -42,13 +42,23 @@
         </label>
         <p v-if="formError" class="text-sm text-srb-red">{{ formError }}</p>
         <div class="flex justify-end gap-3 pt-2">
-          <button type="button" class="admin-btn admin-btn-ghost" @click="drawerOpen = false">Cancel</button>
-          <button type="submit" class="admin-btn admin-btn-primary">Save</button>
+          <button type="button" class="admin-btn admin-btn-ghost" :disabled="saving" @click="drawerOpen = false">Cancel</button>
+          <button type="submit" class="admin-btn admin-btn-primary" :disabled="saving">
+            {{ saving ? 'Saving…' : 'Save' }}
+          </button>
         </div>
       </form>
     </FormDrawer>
 
-    <ConfirmModal :open="!!pendingDelete" title="Delete this language?" message="It will be detached from any scholars that use it." @cancel="pendingDelete = null" @confirm="destroy" />
+    <ConfirmModal
+      :open="!!pendingDelete"
+      title="Delete this language?"
+      message="It will be detached from any scholars that use it."
+      :busy="deleting"
+      busy-label="Deleting…"
+      @cancel="!deleting && (pendingDelete = null)"
+      @confirm="destroy"
+    />
   </div>
 </template>
 
@@ -65,6 +75,8 @@ const drawerOpen = ref(false);
 const editing = ref(null);
 const pendingDelete = ref(null);
 const formError = ref('');
+const saving = ref(false);
+const deleting = ref(false);
 const form = reactive({ name: '', code: '', sort_order: 0, is_active: true });
 
 const columns = [
@@ -105,7 +117,9 @@ function askDelete(row) {
 }
 
 async function save() {
+  if (saving.value) return;
   formError.value = '';
+  saving.value = true;
   try {
     if (editing.value) {
       await axios.put(`/api/admin/languages/${editing.value.id}`, { ...form });
@@ -118,13 +132,20 @@ async function save() {
     formError.value = Object.values(e.response?.data?.errors ?? {})[0]?.[0]
       || e.response?.data?.message
       || 'Unable to save.';
+  } finally {
+    saving.value = false;
   }
 }
 
 async function destroy() {
-  if (!pendingDelete.value) return;
-  await axios.delete(`/api/admin/languages/${pendingDelete.value.id}`);
-  pendingDelete.value = null;
-  table.value?.reload();
+  if (!pendingDelete.value || deleting.value) return;
+  deleting.value = true;
+  try {
+    await axios.delete(`/api/admin/languages/${pendingDelete.value.id}`);
+    pendingDelete.value = null;
+    table.value?.reload();
+  } finally {
+    deleting.value = false;
+  }
 }
 </script>

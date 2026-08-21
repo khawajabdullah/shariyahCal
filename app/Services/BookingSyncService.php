@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\EventType;
 use App\Models\Scholar;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -123,18 +124,34 @@ class BookingSyncService
 
         $price = $booking['price'] ?? data_get($booking, 'metadata.price');
         $currency = $booking['currency'] ?? data_get($booking, 'metadata.currency');
+        $calEventTypeId = $booking['eventTypeId'] ?? data_get($booking, 'eventType.id');
+        $eventTypeId = null;
+
+        if ($scholarId && $calEventTypeId) {
+            $eventTypeId = EventType::query()
+                ->where('scholar_id', $scholarId)
+                ->where('cal_event_type_id', (int) $calEventTypeId)
+                ->value('id');
+        }
 
         return [
             'cal_booking_uid' => $uid,
+            'cal_booking_id' => isset($booking['id']) && is_numeric($booking['id']) ? (int) $booking['id'] : null,
+            'cal_event_type_id' => $calEventTypeId ? (int) $calEventTypeId : null,
             'scholar_id' => $scholarId,
+            'event_type_id' => $eventTypeId,
             'attendee_name' => $firstAttendee['name'] ?? $booking['responses']['name'] ?? null,
             'attendee_email' => $firstAttendee['email'] ?? $booking['responses']['email'] ?? null,
+            'attendee_phone' => $firstAttendee['phoneNumber'] ?? null,
+            'attendee_timezone' => $firstAttendee['timeZone'] ?? null,
+            'attendee_language' => $firstAttendee['language'] ?? null,
             'starts_at' => $start,
             'ends_at' => $end,
             'duration_minutes' => is_numeric($duration) ? (int) $duration : null,
             'status' => (string) ($booking['status'] ?? $booking['bookingStatus'] ?? 'unknown'),
             'amount' => is_numeric($price) ? $price : null,
             'currency' => is_string($currency) ? $currency : null,
+            'title' => is_string($booking['title'] ?? null) ? $booking['title'] : null,
             'meeting_url' => $booking['meetingUrl'] ?? $booking['videoCallUrl'] ?? data_get($booking, 'metadata.videoCallUrl'),
         ];
     }

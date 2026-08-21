@@ -86,12 +86,12 @@ const stats = computed(() => computeHeroStats(scholars.value, filters.value));
 
 .hero-copy {
   opacity: 0;
-  transform: translateY(32px);
+  transform: translateY(24px);
   transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1), transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .hero--entered .hero-copy {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .hero h1 { font-size: 52px; line-height: 1.08; color: var(--text-light); margin: 22px 0 22px; max-width: 640px; }
